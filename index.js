@@ -5,8 +5,6 @@ const bodyParser = require("body-parser");
 const ContatoModel = require("./mongoModel"); 
 const cors = require("cors");
 
-
-
 // Middleware para analisar corpos de solicitação
 app.use(bodyParser.json());
 
@@ -68,7 +66,6 @@ app.delete("/contatos/:id", async (req, res) => {
   try {
     console.log(req.params.id)
     const contato = await ContatoModel.findById(req.params.id);
-    console.log("Contato a ser removido:", contato); // Adicionando um log para verificar o contato encontrado
     if (!contato) {
       return res.status(404).json({ message: "Contato não encontrado" });
     }
