@@ -130,6 +130,7 @@ app.post("/tasks", async (req, res) => {
     try {
       const infoEmail = await sendMail(
         "rafasennin@hotmail.com",
+        "Aviso!",
         "Nova sugestão cadastrada",
         `
           <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
