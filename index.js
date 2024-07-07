@@ -130,17 +130,16 @@ app.post("/tasks", async (req, res) => {
     try {
       const infoEmail = await sendMail(
         "rafasennin@hotmail.com",
-        "rafasennin@gmail.com",
-        "Nova tarefa cadastrada",
+        "Nova sugestão cadastrada",
         `
           <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
             <h1 style="color: #007bff;">${newTask.author} cadastrou uma nova tarefa!</h1>
-            <p>Detalhes da tarefa:</p>
+            <p>Detalhes:</p>
             <ul>
-              <li><strong>Nome da Tarefa:</strong> ${newTask.name}</li>
+              <li><strong>Título da  sugestão:</strong> ${newTask.name}</li>
               <li><strong>Data de Criação:</strong> ${newTask.date}</li>
             </ul>
-            <p><strong>Descrição da Tarefa:</strong></p>
+            <p><strong>Descrição da sugestão:</strong></p>
             <p>${newTask.content}</p>
             <hr>
             <p style="font-size: 0.9em; color: #555;">Este é um email automático, por favor, não responda.</p>
