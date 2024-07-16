@@ -8,7 +8,7 @@ const TaskModel = require("./models/mongoTaskModel");
 const sendMail = require("./models/nodeMailer");
 const FileModel = require('./models/FileModel');
 const multer = require('multer');
-const path = require('path');
+
 
 
 const app = express();
@@ -88,7 +88,7 @@ app.get('/files', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-// Rota para deletar um arui vopelo ID
+// Rota para deletar um arquivos pelo ID
 app.delete("/files/:id", async (req, res) => {
   try {
     const file = await FileModel.findById(req.params.id);
