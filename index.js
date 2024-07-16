@@ -3,15 +3,19 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const ContatoModel = require("./mongoModel"); 
-const TaskModel = require("./mongoTaskModel");
-const sendMail = require("./nodeMailer");
+const ContatoModel = require("./models/mongoModel");
+const TaskModel = require("./models/mongoTaskModel");
+const sendMail = require("./models/nodeMailer");
+const FileModel = require('./models/FileModel');
+const multer = require('multer');
+const path = require('path');
+
 
 const app = express();
 
 // Middleware para analisar corpos de solicitação no express
 app.use(bodyParser.json());
-app.use(cors()); 
+app.use(cors());
 
 // Conectar ao MongoDB
 const mongoUrl = process.env.MONGO_URL;
@@ -24,6 +28,102 @@ mongoose.connect(mongoUrl)
     console.error("Erro ao conectar com o MongoDB:", error);
   });
 
+//***********************Files route *********************/
+// Configuração do multer para armazenar arquivos no diretório 'uploads'
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+
+// Funções
+const convertFileSize = (size) => {
+  if (size >= 1024 * 1024) {
+    return (size / (1024 * 1024)).toFixed(2) + ' MB';
+  } else if (size >= 1024) {
+    return (size / 1024).toFixed(2) + ' KB';
+  } else {
+    return size + ' B';
+  }
+};
+
+const getCurrentDate = () => {
+  const date = new Date();
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+//***********************Files route *********************/
+//Rota para adicionar arquivo
+app.post('/files', upload.array('files'), async (req, res) => {
+  try {
+    const files = req.files.map(file => ({
+      originalName: file.originalname,
+      fileType: file.mimetype.split('/')[1],
+      fileLength: convertFileSize(file.size), 
+      fileUploadDate: getCurrentDate(),
+      data: file.buffer 
+    }));
+
+    await FileModel.insertMany(files);
+
+    res.status(201).json({ message: 'Arquivos enviados com sucesso' });
+  } catch (error) {
+    console.error('Erro ao enviar arquivos:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+// Rota para listar os arquivos
+app.get('/files', async (req, res) => {
+  try {
+    const files = await FileModel.find();
+    if (!files || files.length === 0) {
+      return res.status(404).json({ message: 'Nenhum arquivo encontrado' });
+    }
+    res.json(files);
+    console.log("Arquivos listados com sucesso")
+  } catch (error) {
+    console.error('Erro ao listar arquivos:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+// Rota para deletar um arui vopelo ID
+app.delete("/files/:id", async (req, res) => {
+  try {
+    const file = await FileModel.findById(req.params.id);
+    if (!file) {
+      console.log("Arquivo não encontrado com o id:", req.params.id);
+      return res.status(404).json({ message: "Arquivo não encontrado" });
+    }
+    await FileModel.deleteOne({ _id: req.params.id });
+    console.log("Arquivo deletado com sucesso com o id:", req.params.id);
+    res.json({ message: "Arquivo deletado com sucesso" });
+  } catch (error) {
+    console.error("Erro ao deletar o arquivo:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+//Rota para dowload
+app.get('/files/:id', async (req, res) => {
+  try {
+    const file = await FileModel.findById(req.params.id);
+    if (!file) {
+      return res.status(404).json({ message: 'Arquivo não encontrado' });
+    }
+    res.set({
+      'Content-Type': file.fileType,
+      'Content-Disposition': `attachment; filename=${file.originalName}`
+    });
+    res.send(file.data); // Envia o arquivo como resposta
+  } catch (error) {
+    console.error('Erro ao buscar arquivo:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+//***********************Contacts route *********************/
 // Rota para listar todos os contatos
 app.get("/contatos", async (req, res) => {
   try {
@@ -35,7 +135,6 @@ app.get("/contatos", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
 // Rota para adicionar um novo contato
 app.post("/contatos", async (req, res) => {
   const novoContato = new ContatoModel({
@@ -68,7 +167,6 @@ app.post("/contatos", async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 });
-
 // Rota para buscar um contato pelo ID
 app.get("/contatos/:id", async (req, res) => {
   console.log("GET /contatos/:id called with id:", req.params.id);
@@ -84,7 +182,6 @@ app.get("/contatos/:id", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
 // Rota para deletar um contato pelo ID
 app.delete("/contatos/:id", async (req, res) => {
   console.log("DELETE /contatos/:id called with id:", req.params.id);
@@ -103,12 +200,10 @@ app.delete("/contatos/:id", async (req, res) => {
   }
 });
 
-// Rotas para Tasks
-
+//***********************Tasks route *********************/
 // Rota para listar todas as tarefas
 app.get("/tasks", async (req, res) => {
   try {
-    console.log("GET /tasks called");
     const tasks = await TaskModel.find();
     res.json(tasks);
   } catch (error) {
@@ -147,7 +242,7 @@ app.post("/tasks", async (req, res) => {
           </div>
         `
       );
-      
+
       console.log("Email enviado com sucesso:", infoEmail);
     } catch (emailError) {
       console.error("Erro ao enviar email:", emailError);
@@ -158,8 +253,6 @@ app.post("/tasks", async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 });
-
-
 // Rota para buscar uma tarefa pelo ID
 app.get("/tasks/:id", async (req, res) => {
   console.log("GET /tasks/:id called with id:", req.params.id);
@@ -175,7 +268,6 @@ app.get("/tasks/:id", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
 // Rota para editar uma tarefa pelo ID
 app.put("/tasks/:id", async (req, res) => {
   console.log("PUT /tasks/:id called with id:", req.params.id);
@@ -191,7 +283,6 @@ app.put("/tasks/:id", async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 });
-
 // Rota para deletar uma tarefa pelo ID
 app.delete("/tasks/:id", async (req, res) => {
   console.log("DELETE /tasks/:id called with id:", req.params.id);
